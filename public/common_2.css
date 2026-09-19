@@ -1,0 +1,117 @@
+/*
+ * common_2.css — "PLAYTIME" theme
+ * Light, soft, rounded and friendly — pastel coral vs sky-blue, big
+ * pill-shaped buttons, gentle drop shadows instead of glows.
+ * Preview with ?theme=2 on any page.
+ */
+
+:root {
+  --stage-navy: #fff6ea;
+  --panel-charcoal: #fffaf3;
+  --panel-charcoal-2: #fef0da;
+  --team1-red: #ff6b6b;
+  --team1-red-dim: #ffb3b3;
+  --team2-blue: #4dabf7;
+  --team2-blue-dim: #a9d8ff;
+  --hex-yellow: #ffe066;
+  --gold: #ffb703;
+  --text-bright: #3a2e39;
+  --text-dim: #8d7b8a;
+  --border-color: #f0ddc4;
+  --border-strong: #e8c9a0;
+  --on-gold-text: #3a2e39;
+  --ink: #4a3728;
+  --input-bg: #ffffff;
+  --board-label-color: rgba(58,46,57,0.8);
+  --brand-glow: 0 2px 0 rgba(255,255,255,0.6);
+  --page-bg-gradient: radial-gradient(ellipse at top, #fffdf8 0%, var(--stage-navy) 70%);
+  --font-display: "Trebuchet MS", "Verdana", sans-serif;
+  --font-body: "Verdana", "Trebuchet MS", sans-serif;
+  --font-mono: "Courier New", monospace;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  height: 100%;
+  margin: 0;
+  background: var(--page-bg-gradient);
+  color: var(--text-bright);
+  font-family: var(--font-body);
+  overflow: hidden;
+}
+
+.hidden { display: none !important; }
+
+.btn {
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: none;
+  border: none;
+  border-radius: 999px;
+  padding: 12px 24px;
+  font-size: 14px;
+  cursor: pointer;
+  box-shadow: 0 3px 0 rgba(0,0,0,0.12);
+  transition: transform 0.08s ease, box-shadow 0.08s ease, filter 0.15s ease;
+}
+.btn:hover { filter: brightness(1.05); transform: translateY(-1px); box-shadow: 0 4px 0 rgba(0,0,0,0.12); }
+.btn:active { transform: translateY(2px); box-shadow: 0 1px 0 rgba(0,0,0,0.12); }
+.btn-gold { background: var(--gold); color: var(--on-gold-text); }
+.btn-ghost { background: var(--panel-charcoal-2); color: var(--text-bright); border: 1px solid var(--border-strong); box-shadow: none; }
+
+/* ---------- title card / intro ---------- */
+.title-card {
+  position: fixed; inset: 0; z-index: 40;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  background: var(--stage-navy);
+}
+.title-card video {
+  position: fixed; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 1;
+}
+.title-card .brand-mark {
+  position: relative; z-index: 2;
+  font-family: var(--font-display); font-weight: 800; letter-spacing: 4px;
+  font-size: clamp(32px, 6vw, 72px); color: var(--team1-red);
+  text-shadow: var(--brand-glow);
+}
+
+/* ---------- hex board (SVG) ---------- */
+.hex-board { width: 100%; height: 100%; display: block; }
+.board-frame .frame-team1 { fill: var(--team1-red); }
+.board-frame .frame-team2 { fill: var(--team2-blue); }
+.board-label {
+  font-family: var(--font-display); font-weight: 800; letter-spacing: 4px;
+  fill: var(--board-label-color);
+}
+.lbl-team1, .lbl-team2 { font-size: 20px; }
+
+.hex { stroke: #ffffff; stroke-width: 4; transition: fill 0.25s ease, filter 0.15s ease; }
+.hex-open { fill: var(--hex-yellow); }
+.hex-team1 { fill: var(--team1-red); }
+.hex-team2 { fill: var(--team2-blue); }
+.hex-active { filter: brightness(1.1); }
+.hex-label {
+  font-family: var(--font-display); font-weight: 800; fill: var(--ink);
+  text-anchor: middle; dominant-baseline: middle; pointer-events: none;
+}
+
+.hex-board.revealing .hex { animation: hexReveal 1.1s ease; }
+@keyframes hexReveal {
+  0%   { fill: var(--hex-yellow) !important; }
+  30%  { fill: var(--team1-red) !important; }
+  60%  { fill: var(--team2-blue) !important; }
+  100% { fill: var(--hex-yellow) !important; }
+}
+
+/* buzz flash */
+body.flash-t1 { animation: flashT1 0.4s ease; }
+body.flash-t2 { animation: flashT2 0.4s ease; }
+@keyframes flashT1 { 0% { box-shadow: inset 0 0 0 0 var(--team1-red); } 30% { box-shadow: inset 0 0 80px 14px var(--team1-red); } 100% { box-shadow: inset 0 0 0 0 transparent; } }
+@keyframes flashT2 { 0% { box-shadow: inset 0 0 0 0 var(--team2-blue); } 30% { box-shadow: inset 0 0 80px 14px var(--team2-blue); } 100% { box-shadow: inset 0 0 0 0 transparent; } }
+
+kbd {
+  background: var(--ink); border: 1px solid var(--border-strong); border-radius: 8px;
+  padding: 1px 8px; color: #fffaf3; margin-right: 6px; font-family: var(--font-mono);
+}

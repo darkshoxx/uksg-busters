@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>UKSG-BUSTERS — Admin</title>
+<link id="themeLink" rel="stylesheet" href="/common.css" />
+<script>
+  (function () {
+    var theme = new URLSearchParams(location.search).get("theme");
+    if (theme) {
+      var newLink = document.createElement("link");
+      newLink.rel = "stylesheet";
+      newLink.href = "/common_" + theme + ".css";
+      document.head.appendChild(newLink);
+    }
+  })();
+</script>
+<style>
+  body { overflow: hidden; }
+  .admin-page { position: fixed; inset: 0; display: grid; grid-template-columns: 1fr 380px; grid-template-rows: auto 1fr; }
+  .admin-header {
+    grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 20px; border-bottom: 1px solid var(--border-color);
+  }
+  .admin-header .brand { font-family: var(--font-display); letter-spacing: 4px; color: var(--hex-yellow); font-weight: 800; }
+  .admin-header .scores { display: flex; gap: 24px; font-family: var(--font-display); }
+  .admin-header .scores b { margin-left: 6px; }
+  .admin-board { padding: 10px 20px 20px; min-height: 0; }
+  .admin-side { border-left: 1px solid var(--border-color); padding: 16px; overflow-y: auto; }
+  .panel { background: var(--panel-charcoal); border: 1px solid var(--border-color); border-radius: 10px; padding: 14px; margin-bottom: 14px; }
+  .panel-title { font-family: var(--font-display); letter-spacing: 2px; color: var(--gold); font-size: 12px; text-transform: uppercase; margin-bottom: 8px; }
+  .qb-tag { font-family: var(--font-display); letter-spacing: 2px; font-size: 11px; color: var(--gold); text-transform: uppercase; }
+  .qb-question { font-size: 17px; margin: 8px 0; }
+  .qb-answer { color: var(--gold); font-family: var(--font-mono); font-size: 14px; }
+  .buzz-line { font-family: var(--font-display); font-weight: 700; margin-top: 6px; min-height: 20px; }
+  .buzz-line.t1 { color: var(--team1-red); }
+  .buzz-line.t2 { color: var(--team2-blue); }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+  .console-row { color: var(--text-dim); margin: 3px 0; font-size: 13px; font-family: var(--font-mono); }
+  .status-text { font-size: 13px; color: var(--text-bright); }
+  .team-name-input { width: 100%; background: var(--input-bg); border: 1px solid var(--border-strong); color: var(--text-bright); padding: 6px 8px; border-radius: 6px; font-family: var(--font-body); margin-top: 4px; }
+  .buzzer-row { display: flex; align-items: center; justify-content: space-between; margin: 6px 0; font-size: 13px; }
+</style>
+</head>
+<body>
+  <div class="admin-page">
+    <div class="admin-header">
+      <div class="brand">UKSG·BUSTERS — Admin</div>
+      <div class="scores">
+        <span>Team 1: <b id="score1">0</b></span>
+        <span>Team 2: <b id="score2">0</b></span>
+        <span id="phaseLabel" style="color: var(--text-dim);"></span>
+      </div>
+    </div>
+
+    <div class="admin-board">
+      <svg id="board" class="hex-board" viewBox="0 0 800 700"></svg>
+    </div>
+
+    <div class="admin-side">
+
+      <div class="panel">
+        <div class="panel-title">Current question</div>
+        <div class="qb-tag" id="qbTag">No hex open</div>
+        <div class="qb-question" id="qbQuestion"></div>
+        <div class="qb-answer hidden" id="qbAnswer"></div>
+        <div class="buzz-line" id="buzzLine"></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title">Buzzers — game controllers</div>
+        <div class="console-row" id="gamepadStatus" style="min-height: 16px;">Checking for controllers…</div>
+        <div class="buzzer-row">
+          <span>Team 1: <kbd id="team1GamepadLabel">Not bound</kbd></span>
+          <button class="btn btn-ghost" id="team1GamepadRebindBtn">Rebind</button>
+        </div>
+        <div class="buzzer-row">
+          <span>Team 2: <kbd id="team2GamepadLabel">Not bound</kbd></span>
+          <button class="btn btn-ghost" id="team2GamepadRebindBtn">Rebind</button>
+        </div>
+        <div class="console-row" id="rebindStatus" style="color: var(--gold); min-height: 16px;"></div>
+        <div class="console-row" style="opacity:0.6;">Click Rebind, then press the physical button. Bindings are saved to this browser/machine only.</div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title">Buzzers — keyboard (fallback / testing)</div>
+        <div class="buzzer-row">
+          <span>Team 1: <kbd id="team1KeyLabel">Q</kbd></span>
+          <button class="btn btn-ghost" id="team1RebindBtn">Rebind</button>
+        </div>
+        <div class="buzzer-row">
+          <span>Team 2: <kbd id="team2KeyLabel">P</kbd></span>
+          <button class="btn btn-ghost" id="team2RebindBtn">Rebind</button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title">Judging</div>
+        <div class="console-row"><kbd>Enter</kbd> Mark correct</div>
+        <div class="console-row"><kbd>Backspace</kbd> Mark wrong</div>
+        <div class="console-row"><kbd>U</kbd> Cancel open question / undo last hex</div>
+        <div class="console-row" style="opacity:0.6;">Question &amp; answer are always visible here and on the host page.</div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title">Show control</div>
+        <div class="row">
+          <button class="btn btn-gold" id="playIntroBtn">Play intro (I)</button>
+          <button class="btn btn-ghost" id="skipIntroBtn">Skip intro (K)</button>
+        </div>
+        <div class="row">
+          <button class="btn btn-gold" id="startBgBtn">Start bg music (B)</button>
+          <button class="btn btn-ghost" id="stopBgBtn">Stop bg music</button>
+        </div>
+        <div class="row">
+          <button class="btn btn-ghost" id="newGameBtn">New game (N)</button>
+        </div>
+        <div class="console-row" id="showStatus" style="margin-top: 6px;"></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title">Team names</div>
+        <label class="console-row">Team 1
+          <input class="team-name-input" id="team1Input" maxlength="24" />
+        </label>
+        <label class="console-row">Team 2
+          <input class="team-name-input" id="team2Input" maxlength="24" />
+        </label>
+        <div class="row">
+          <button class="btn btn-ghost" id="reloadNamesBtn">Reload from teamnames.ini</button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title">Status</div>
+        <div class="status-text" id="statusText">Click a hexagon to open a question.</div>
+      </div>
+
+    </div>
+  </div>
+
+  <script src="/client-common.js"></script>
+  <script src="/admin.js"></script>
+</body>
+</html>

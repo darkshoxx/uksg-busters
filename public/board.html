@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>UKSG-BUSTERS — Board</title>
+<link rel="stylesheet" href="/common.css" />
+<style>
+  body { overflow: hidden; }
+  .board-page { position: fixed; inset: 0; display: flex; flex-direction: column; }
+  .scoreboard {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 34px; z-index: 5;
+  }
+  .score-badge { display: flex; flex-direction: column; align-items: center; min-width: 120px; padding: 8px 20px; border-radius: 10px; font-family: var(--font-display); }
+  .score-badge.team1 { background: linear-gradient(180deg, var(--team1-red), var(--team1-red-dim)); }
+  .score-badge.team2 { background: linear-gradient(180deg, var(--team2-blue), var(--team2-blue-dim)); }
+  .score-name { letter-spacing: 2px; font-size: 13px; text-transform: uppercase; opacity: 0.85; }
+  .score-value { font-size: 30px; font-weight: 800; }
+  .show-title { font-family: var(--font-display); font-weight: 800; letter-spacing: 8px; font-size: 22px; color: var(--hex-yellow); }
+  .board-area { flex: 1; padding: 0 24px 24px; }
+  .win-overlay {
+    position: fixed; inset: 0; z-index: 30; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    background: rgba(4,7,14,0.88);
+  }
+  .win-overlay .headline { font-family: var(--font-display); font-weight: 800; letter-spacing: 4px; font-size: clamp(28px, 6vw, 64px); color: var(--gold); text-align: center; }
+  .audio-banner {
+    position: fixed; top: 16px; right: 16px; z-index: 50;
+    background: var(--gold); color: #1a1400; font-family: var(--font-display);
+    font-weight: 700; letter-spacing: 1px; padding: 8px 16px; border-radius: 8px;
+    cursor: pointer; font-size: 13px;
+  }
+</style>
+</head>
+<body>
+
+  <div id="introVideoLayer" class="title-card hidden">
+    <video id="introVideo" playsinline></video>
+  </div>
+  <div id="titleCard" class="title-card hidden">
+    <div class="brand-mark">UKSG·BUSTERS</div>
+  </div>
+
+  <div id="audioBanner" class="audio-banner hidden">🔇 Click to enable sound</div>
+
+  <div class="board-page">
+    <div class="scoreboard">
+      <div class="score-badge team1">
+        <span class="score-name" id="team1Name">Team 1</span>
+        <span class="score-value" id="score1">0</span>
+      </div>
+      <div class="show-title">UKSG·BUSTERS</div>
+      <div class="score-badge team2">
+        <span class="score-name" id="team2Name">Team 2</span>
+        <span class="score-value" id="score2">0</span>
+      </div>
+    </div>
+    <div class="board-area">
+      <svg id="board" class="hex-board" viewBox="0 0 800 700"></svg>
+    </div>
+  </div>
+
+  <div id="winOverlay" class="win-overlay hidden">
+    <div class="headline" id="winHeadline"></div>
+  </div>
+
+  <script src="/client-common.js"></script>
+  <script src="/board.js"></script>
+</body>
+</html>

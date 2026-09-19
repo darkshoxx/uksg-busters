@@ -1,0 +1,122 @@
+/*
+ * common_3.css — "STUDIO" theme
+ * Prestige-broadcast look: deep wine and charcoal, thin gold hairline
+ * borders, serif display type. Closer to Wheel of Fortune than an
+ * arcade — quieter, more expensive-looking.
+ * Preview with ?theme=3 on any page.
+ */
+
+:root {
+  --stage-navy: #1a1015;
+  --panel-charcoal: #241820;
+  --panel-charcoal-2: #2c1e27;
+  --team1-red: #9c2b3a;
+  --team1-red-dim: #4a1219;
+  --team2-blue: #21406e;
+  --team2-blue-dim: #101f38;
+  --hex-yellow: #f0e2c0;
+  --gold: #d4af37;
+  --text-bright: #f3ead9;
+  --text-dim: #b09f8e;
+  --border-color: #3a2a33;
+  --border-strong: #6b5842;
+  --on-gold-text: #241820;
+  --ink: #241016;
+  --input-bg: #1a1015;
+  --board-label-color: rgba(243,234,217,0.85);
+  --brand-glow: 0 0 18px rgba(212,175,55,0.35);
+  --page-bg-gradient: radial-gradient(ellipse at top, #241820 0%, var(--stage-navy) 65%);
+  --font-display: Georgia, "Times New Roman", serif;
+  --font-body: "Palatino Linotype", Georgia, serif;
+  --font-mono: "Consolas", "Courier New", monospace;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  height: 100%;
+  margin: 0;
+  background: var(--page-bg-gradient);
+  color: var(--text-bright);
+  font-family: var(--font-body);
+  overflow: hidden;
+}
+
+.hidden { display: none !important; }
+
+.btn {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-style: italic;
+  letter-spacing: 1px;
+  text-transform: none;
+  border: 1px solid var(--gold);
+  border-radius: 3px;
+  padding: 10px 22px;
+  font-size: 14px;
+  cursor: pointer;
+  background: transparent;
+  color: var(--gold);
+  transition: background 0.2s ease, color 0.2s ease;
+}
+.btn:hover { filter: none; background: var(--gold); color: var(--on-gold-text); }
+.btn:active { transform: scale(0.98); }
+.btn-gold { background: var(--gold); color: var(--on-gold-text); }
+.btn-gold:hover { background: transparent; color: var(--gold); }
+.btn-ghost { background: transparent; color: var(--text-bright); border: 1px solid var(--border-strong); }
+.btn-ghost:hover { background: var(--panel-charcoal-2); color: var(--text-bright); }
+
+/* ---------- title card / intro ---------- */
+.title-card {
+  position: fixed; inset: 0; z-index: 40;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  background: var(--stage-navy);
+}
+.title-card video {
+  position: fixed; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 1;
+}
+.title-card .brand-mark {
+  position: relative; z-index: 2;
+  font-family: var(--font-display); font-weight: 700; font-style: italic; letter-spacing: 6px;
+  font-size: clamp(32px, 6vw, 72px); color: var(--gold);
+  text-shadow: var(--brand-glow);
+}
+
+/* ---------- hex board (SVG) ---------- */
+.hex-board { width: 100%; height: 100%; display: block; }
+.board-frame .frame-team1 { fill: var(--team1-red); }
+.board-frame .frame-team2 { fill: var(--team2-blue); }
+.board-label {
+  font-family: var(--font-display); font-weight: 700; letter-spacing: 5px;
+  fill: var(--board-label-color);
+}
+.lbl-team1, .lbl-team2 { font-size: 19px; }
+
+.hex { stroke: var(--gold); stroke-width: 1.5; transition: fill 0.3s ease, filter 0.15s ease; }
+.hex-open { fill: var(--hex-yellow); }
+.hex-team1 { fill: var(--team1-red); }
+.hex-team2 { fill: var(--team2-blue); }
+.hex-active { filter: brightness(1.15); }
+.hex-label {
+  font-family: var(--font-display); font-weight: 700; fill: var(--ink);
+  text-anchor: middle; dominant-baseline: middle; pointer-events: none;
+}
+
+.hex-board.revealing .hex { animation: hexReveal 1.3s ease; }
+@keyframes hexReveal {
+  0%   { fill: var(--hex-yellow) !important; }
+  30%  { fill: var(--team1-red) !important; }
+  60%  { fill: var(--team2-blue) !important; }
+  100% { fill: var(--hex-yellow) !important; }
+}
+
+/* buzz flash */
+body.flash-t1 { animation: flashT1 0.5s ease; }
+body.flash-t2 { animation: flashT2 0.5s ease; }
+@keyframes flashT1 { 0% { box-shadow: inset 0 0 0 0 var(--team1-red); } 30% { box-shadow: inset 0 0 90px 16px var(--team1-red); } 100% { box-shadow: inset 0 0 0 0 transparent; } }
+@keyframes flashT2 { 0% { box-shadow: inset 0 0 0 0 var(--team2-blue); } 30% { box-shadow: inset 0 0 90px 16px var(--team2-blue); } 100% { box-shadow: inset 0 0 0 0 transparent; } }
+
+kbd {
+  background: var(--ink); border: 1px solid var(--gold); border-radius: 3px;
+  padding: 1px 8px; color: var(--gold); margin-right: 6px; font-family: var(--font-mono);
+}
