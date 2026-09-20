@@ -6,14 +6,10 @@
 <title>UKSG-BUSTERS — Admin</title>
 <link id="themeLink" rel="stylesheet" href="/common.css" />
 <script>
+  // ?theme=1 (etc) swaps in an alternate stylesheet — see public/common_*.css
   (function () {
     var theme = new URLSearchParams(location.search).get("theme");
-    if (theme) {
-      var newLink = document.createElement("link");
-      newLink.rel = "stylesheet";
-      newLink.href = "/common_" + theme + ".css";
-      document.head.appendChild(newLink);
-    }
+    if (theme) document.getElementById("themeLink").href = "/common_" + theme + ".css";
   })();
 </script>
 <style>
@@ -52,6 +48,7 @@
         <span>Team 2: <b id="score2">0</b></span>
         <span id="phaseLabel" style="color: var(--text-dim);"></span>
       </div>
+      <button class="btn btn-ghost" id="logoutBtn" style="padding: 6px 14px; font-size: 11px;">Log out</button>
     </div>
 
     <div class="admin-board">

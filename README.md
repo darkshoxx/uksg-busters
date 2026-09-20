@@ -16,12 +16,61 @@ Then open, on this machine or any device on the same network (swap
 
 | Page | URL | Who's looking at it |
 |---|---|---|
-| Admin | `http://localhost:8420/admin` | You — full board, buzzers, judging |
+| Admin | `http://localhost:8420/admin` | You — full board, buzzers, judging. **Password-protected.** |
 | Host | `http://localhost:8420/host` | The host's phone/tablet — question only, huge text, no controls |
 | Board | `http://localhost:8420/board` | The stream / projector — board only, question text never appears |
 
 All three stay in sync automatically — they're reading the same server
 state over a live connection, there's nothing to keep in sync by hand.
+
+## Admin password
+
+`/admin` is password-protected (`/host` and `/board` are intentionally
+left open, as requested — they don't expose any controls, just displays).
+
+**First run:** if `data/admin-password.txt` doesn't exist, the server
+generates a random 12-character password, saves it to that file, and
+prints it once to the terminal. That's the only place it's shown — copy
+it from there, or open the file yourself.
+
+**Setting your own:** put whatever you want in `data/admin-password.txt`
+(plain text, one line) and restart the server. It's read once at startup,
+same as `teamnames.ini`.
+
+**How it works, if you want the detail:** the password is never compared
+as plain text. On startup the server hashes the password from the file
+with `scrypt` (Node's built-in, deliberately slow-to-compute hash —
+resists brute force much better than a fast hash like SHA-256) using a
+random salt generated fresh for that run. A login attempt gets hashed
+the same way and compared with `crypto.timingSafeEqual`, a constant-time
+comparison that doesn't leak timing information about how much of the
+password matched. On success the server sets an `HttpOnly` session
+cookie (12-hour expiry, or until you click "Log out" in the admin
+header); that cookie — not the password — is what every subsequent
+`/action` request and the admin SSE stream (`/events?role=admin`) check.
+Five wrong attempts from the same address triggers a lockout with
+exponential backoff (30s, 1m, 2m, capped at 5m) — enough to stop someone
+idly guessing, not a defence against a serious attacker.
+
+**What this isn't:** the connection is plain HTTP, not HTTPS (this is a
+local-network tool, not an internet-facing one), so don't put it on a
+network you don't trust, and don't reuse a password you care about
+elsewhere. It's a real barrier against "someone on the venue Wi-Fi
+stumbles onto the admin URL," not a defense against a determined
+attacker on the same network sniffing traffic.
+
+## Visual themes
+
+All styling lives in `public/common.css` plus four drop-in alternates —
+`common_1.css` (retro CRT terminal), `common_2.css` (soft pastel),
+`common_3.css` (elegant serif broadcast studio), `common_4.css`
+("hog wild" neon maximalist). Preview any of them on any page by adding
+`?theme=1` (or `2`/`3`/`4`) to the URL, e.g.
+`http://localhost:8420/admin?theme=4` — no restart needed, it's a
+client-side swap. Drop the query param entirely to go back to the
+default look (don't use `?theme=0` — there's no `common_0.css`, so that
+would just leave the page unstyled). To make an alternate permanent,
+rename it over `common.css` in `public/`.
 
 ## Why one server on one port, not three ports
 

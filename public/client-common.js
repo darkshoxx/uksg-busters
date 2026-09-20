@@ -19,11 +19,16 @@ function connectSSE(role, onState) {
 
 async function postAction(type, payload) {
   try {
-    await fetch("/action", {
+    const res = await fetch("/action", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ type, ...payload }),
     });
+    if (res.status === 401) {
+      // Session expired or missing — send the operator back to /admin,
+      // which will now serve the login page instead of the console.
+      location.href = "/admin";
+    }
   } catch (e) {
     console.error("Action failed:", type, e);
   }

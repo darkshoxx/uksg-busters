@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>UKSG-BUSTERS — Admin login</title>
+<link id="themeLink" rel="stylesheet" href="/common.css" />
+<script>
+  (function () {
+    var theme = new URLSearchParams(location.search).get("theme");
+    if (theme) document.getElementById("themeLink").href = "/common_" + theme + ".css";
+  })();
+</script>
+<style>
+  body { overflow: auto; display: flex; align-items: center; justify-content: center; height: 100vh; }
+  .login-card {
+    text-align: center; padding: 48px 56px; border: 2px solid var(--gold);
+    border-radius: 12px; background: var(--panel-charcoal); box-shadow: 0 0 60px rgba(0,0,0,0.3);
+    max-width: 360px; width: 90%;
+  }
+  .login-card .brand-mark {
+    font-family: var(--font-display); font-weight: 800; letter-spacing: 6px;
+    font-size: 28px; color: var(--hex-yellow); margin-bottom: 4px;
+  }
+  .login-card p { color: var(--text-dim); font-size: 13px; margin: 6px 0 22px; }
+  .login-card input {
+    width: 100%; background: var(--input-bg); border: 1px solid var(--border-strong);
+    color: var(--text-bright); padding: 10px 12px; border-radius: 6px;
+    font-family: var(--font-body); font-size: 15px; margin-bottom: 14px;
+  }
+  .login-card .btn { width: 100%; }
+  #loginError { color: var(--team1-red); font-size: 13px; min-height: 18px; margin-top: 12px; }
+</style>
+</head>
+<body>
+  <div class="login-card">
+    <div class="brand-mark">UKSG·BUSTERS</div>
+    <p>Admin access — password required</p>
+    <form id="loginForm" autocomplete="off">
+      <input type="password" id="passwordInput" placeholder="Password" autofocus />
+      <button type="submit" class="btn btn-gold">Enter</button>
+    </form>
+    <div id="loginError"></div>
+  </div>
+
+  <script>
+    const form = document.getElementById("loginForm");
+    const input = document.getElementById("passwordInput");
+    const errorEl = document.getElementById("loginError");
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      errorEl.textContent = "";
+      try {
+        const res = await fetch("/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ password: input.value }),
+        });
+        const data = await res.json();
+        if (data.ok) {
+          location.href = "/admin" + location.search; // preserve ?theme= if present
+        } else {
+          errorEl.textContent = data.error || "Wrong password.";
+          input.value = "";
+          input.focus();
+        }
+      } catch {
+        errorEl.textContent = "Couldn't reach the server — try again.";
+      }
+    });
+  </script>
+</body>
+</html>

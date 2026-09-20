@@ -23,6 +23,7 @@
 const http = require("http");
 const fs = require("fs");
 const path = require("path");
+const crypto = require("crypto");
 const { URL } = require("url");
 
 const PORT = process.env.PORT || 8420;
@@ -32,8 +33,90 @@ const MEDIA_DIR = path.join(ROOT, "media");
 const DATA_DIR = path.join(ROOT, "data");
 const QUESTIONS_PATH = path.join(DATA_DIR, "questions.json");
 const TEAMNAMES_PATH = path.join(DATA_DIR, "teamnames.ini");
+const ADMIN_PASSWORD_PATH = path.join(DATA_DIR, "admin-password.txt");
 
 const ROWS = [5, 6, 5, 6, 5]; // 27 hexes, matches the UKSG-Busters concept board
+
+// --------------------------------------------------------------- admin auth --
+// Password lives in a local file (data/admin-password.txt), never in code
+// or in a URL. If it's missing, one is generated and saved so the admin
+// panel is never left open by accident. Verification hashes both sides
+// with scrypt (deliberately slow, resists brute force) and compares them
+// with a constant-time comparison — the plaintext password is never
+// compared directly, and never sent anywhere except once, over the
+// login POST, to be checked. Only /admin (page, actions, and its SSE
+// stream) is gated; /host and /board stay open, as requested.
+
+function loadOrCreateAdminPassword() {
+  let password = "";
+  try {
+    password = fs.readFileSync(ADMIN_PASSWORD_PATH, "utf8").trim();
+  } catch {}
+  if (!password) {
+    password = crypto.randomBytes(9).toString("base64").replace(/[^a-zA-Z0-9]/g, "").slice(0, 12);
+    fs.writeFileSync(ADMIN_PASSWORD_PATH, password + "\n", "utf8");
+    console.log("\n🔑 No admin password found, so one was generated and saved to data/admin-password.txt:");
+    console.log(`   ${password}`);
+    console.log("   Change it any time by editing that file and restarting the server.\n");
+  }
+  return password;
+}
+
+// Fresh random salt each process start is sufficient here: the hash is
+// only ever compared against login attempts made *during this run* —
+// nothing is persisted or compared across restarts.
+const ADMIN_AUTH_SALT = crypto.randomBytes(16);
+const ADMIN_PASSWORD_HASH = crypto.scryptSync(loadOrCreateAdminPassword(), ADMIN_AUTH_SALT, 64);
+
+function verifyPassword(candidate) {
+  if (typeof candidate !== "string" || !candidate) return false;
+  const candidateHash = crypto.scryptSync(candidate, ADMIN_AUTH_SALT, 64);
+  return crypto.timingSafeEqual(candidateHash, ADMIN_PASSWORD_HASH);
+}
+
+const SESSION_COOKIE = "uksg_admin_session";
+const SESSION_TTL_MS = 12 * 60 * 60 * 1000; // 12 hours — generous for one show, resets on restart
+const sessions = new Map(); // token -> createdAt
+
+function createSession() {
+  const token = crypto.randomBytes(32).toString("hex");
+  sessions.set(token, Date.now());
+  return token;
+}
+function isValidSession(token) {
+  if (!token || !sessions.has(token)) return false;
+  if (Date.now() - sessions.get(token) > SESSION_TTL_MS) { sessions.delete(token); return false; }
+  return true;
+}
+function parseCookies(req) {
+  const header = req.headers.cookie || "";
+  const out = {};
+  header.split(";").forEach(pair => {
+    const idx = pair.indexOf("=");
+    if (idx === -1) return;
+    out[pair.slice(0, idx).trim()] = decodeURIComponent(pair.slice(idx + 1).trim());
+  });
+  return out;
+}
+function isAuthed(req) {
+  return isValidSession(parseCookies(req)[SESSION_COOKIE]);
+}
+
+// Simple brute-force mitigation: exponential lockout per source IP after
+// repeated failed attempts. Not meant to withstand a serious attacker —
+// meant to make casual "let's try some passwords" on the LAN pointless.
+const loginAttempts = new Map(); // ip -> { count, lockUntil }
+function rateLimited(ip) {
+  const entry = loginAttempts.get(ip);
+  return !!(entry && entry.lockUntil && Date.now() < entry.lockUntil);
+}
+function recordFailedLogin(ip) {
+  const entry = loginAttempts.get(ip) || { count: 0, lockUntil: 0 };
+  entry.count += 1;
+  if (entry.count >= 5) entry.lockUntil = Date.now() + Math.min(30000 * Math.pow(2, entry.count - 5), 5 * 60 * 1000);
+  loginAttempts.set(ip, entry);
+}
+function clearFailedLogins(ip) { loginAttempts.delete(ip); }
 
 // ------------------------------------------------------------- questions --
 
@@ -187,6 +270,7 @@ function checkLayout() {
   const problems = [];
   if (!fs.existsSync(PUBLIC_DIR)) problems.push(`Missing folder: ${PUBLIC_DIR}`);
   if (!fs.existsSync(path.join(PUBLIC_DIR, "admin.html"))) problems.push(`Missing file: ${path.join(PUBLIC_DIR, "admin.html")}`);
+  if (!fs.existsSync(path.join(PUBLIC_DIR, "login.html"))) problems.push(`Missing file: ${path.join(PUBLIC_DIR, "login.html")}`);
   if (!fs.existsSync(DATA_DIR)) problems.push(`Missing folder: ${DATA_DIR}`);
   if (!fs.existsSync(QUESTIONS_PATH)) problems.push(`Missing file: ${QUESTIONS_PATH}`);
   if (!fs.existsSync(MEDIA_DIR)) problems.push(`Missing folder: ${MEDIA_DIR} (media playback will fail, but the server can still run)`);
@@ -195,7 +279,7 @@ function checkLayout() {
     problems.forEach(p => console.error("   - " + p));
     console.error(`\n   server.js expects this layout, all as siblings of server.js itself:`);
     console.error(`     server.js`);
-    console.error(`     public/  (admin.html, host.html, board.html, admin.js, board.js, host.js, client-common.js, common.css)`);
+    console.error(`     public/  (admin.html, login.html, host.html, board.html, admin.js, board.js, host.js, client-common.js, common.css)`);
     console.error(`     data/    (questions.json, teamnames.ini)`);
     console.error(`     media/   (your .mp3/.mp4 files)`);
     console.error(`   Currently running from: ${ROOT}\n`);
@@ -397,8 +481,6 @@ function serveStatic(res, filePath) {
 }
 
 const ROUTES = {
-  "/": "/public/admin.html",
-  "/admin": "/public/admin.html",
   "/host": "/public/host.html",
   "/board": "/public/board.html",
 };
@@ -418,6 +500,7 @@ const server = http.createServer(async (req, res) => {
   // ---- SSE stream ----
   if (url.pathname === "/events") {
     const role = ["admin", "host", "board"].includes(url.searchParams.get("role")) ? url.searchParams.get("role") : "board";
+    if (role === "admin" && !isAuthed(req)) { res.writeHead(401); res.end("Unauthorized"); return; }
     res.writeHead(200, {
       "Content-Type": "text/event-stream",
       "Cache-Control": "no-cache",
@@ -430,8 +513,47 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  // ---- action endpoint (admin only, but not auth-gated: this is a trusted local network tool) ----
+  // ---- admin login ----
+  if (url.pathname === "/login" && req.method === "POST") {
+    const ip = req.socket.remoteAddress || "unknown";
+    if (rateLimited(ip)) { res.writeHead(429, { "Content-Type": "application/json" }); res.end(JSON.stringify({ ok: false, error: "Too many attempts — wait a moment and try again." })); return; }
+    try {
+      const body = JSON.parse((await readBody(req)) || "{}");
+      if (verifyPassword(body.password)) {
+        clearFailedLogins(ip);
+        const token = createSession();
+        res.writeHead(200, {
+          "Content-Type": "application/json",
+          "Set-Cookie": `${SESSION_COOKIE}=${token}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${Math.floor(SESSION_TTL_MS / 1000)}`,
+        });
+        res.end(JSON.stringify({ ok: true }));
+      } else {
+        recordFailedLogin(ip);
+        res.writeHead(401, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ ok: false, error: "Wrong password." }));
+      }
+    } catch (e) {
+      res.writeHead(400, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ ok: false, error: "Bad request." }));
+    }
+    return;
+  }
+
+  // ---- admin logout ----
+  if (url.pathname === "/logout" && req.method === "POST") {
+    const token = parseCookies(req)[SESSION_COOKIE];
+    if (token) sessions.delete(token);
+    res.writeHead(200, {
+      "Content-Type": "application/json",
+      "Set-Cookie": `${SESSION_COOKIE}=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0`,
+    });
+    res.end(JSON.stringify({ ok: true }));
+    return;
+  }
+
+  // ---- action endpoint (admin only, session-gated) ----
   if (url.pathname === "/action" && req.method === "POST") {
+    if (!isAuthed(req)) { res.writeHead(401, { "Content-Type": "application/json" }); res.end(JSON.stringify({ ok: false, error: "Not authenticated" })); return; }
     try {
       const body = JSON.parse((await readBody(req)) || "{}");
       switch (body.type) {
@@ -469,6 +591,10 @@ const server = http.createServer(async (req, res) => {
   }
 
   // ---- page routes ----
+  if (url.pathname === "/" || url.pathname === "/admin") {
+    serveStatic(res, path.join(PUBLIC_DIR, isAuthed(req) ? "admin.html" : "login.html"));
+    return;
+  }
   if (ROUTES[url.pathname]) {
     serveStatic(res, path.join(ROOT, ROUTES[url.pathname]));
     return;
@@ -487,7 +613,7 @@ const server = http.createServer(async (req, res) => {
 
 server.listen(PORT, () => {
   console.log(`UKSG-BUSTERS server running:`);
-  console.log(`  Admin: http://localhost:${PORT}/admin`);
+  console.log(`  Admin: http://localhost:${PORT}/admin  (password-protected — see above/data/admin-password.txt)`);
   console.log(`  Host:  http://localhost:${PORT}/host`);
   console.log(`  Board: http://localhost:${PORT}/board`);
   console.log(`(swap "localhost" for this machine's LAN IP to reach these from another device)`);

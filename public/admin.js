@@ -269,6 +269,10 @@ document.getElementById("skipIntroBtn").addEventListener("click", () => postActi
 document.getElementById("startBgBtn").addEventListener("click", () => postAction("START_BG", {}));
 document.getElementById("stopBgBtn").addEventListener("click", () => postAction("STOP_BG", {}));
 document.getElementById("newGameBtn").addEventListener("click", () => postAction("NEW_GAME", {}));
+document.getElementById("logoutBtn").addEventListener("click", async () => {
+  await fetch("/logout", { method: "POST" });
+  location.href = "/admin";
+});
 document.getElementById("reloadNamesBtn").addEventListener("click", () => postAction("RELOAD_NAMES", {}));
 
 function commitName(input, team) {

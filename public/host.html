@@ -4,7 +4,14 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>UKSG-BUSTERS — Host</title>
-<link rel="stylesheet" href="/common.css" />
+<link id="themeLink" rel="stylesheet" href="/common.css" />
+<script>
+  // ?theme=1 (etc) swaps in an alternate stylesheet — see public/common_*.css
+  (function () {
+    var theme = new URLSearchParams(location.search).get("theme");
+    if (theme) document.getElementById("themeLink").href = "/common_" + theme + ".css";
+  })();
+</script>
 <style>
   body { overflow: hidden; }
   .host-page {

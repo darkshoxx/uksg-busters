@@ -4,7 +4,14 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>UKSG-BUSTERS — Board</title>
-<link rel="stylesheet" href="/common.css" />
+<link id="themeLink" rel="stylesheet" href="/common.css" />
+<script>
+  // ?theme=1 (etc) swaps in an alternate stylesheet — see public/common_*.css
+  (function () {
+    var theme = new URLSearchParams(location.search).get("theme");
+    if (theme) document.getElementById("themeLink").href = "/common_" + theme + ".css";
+  })();
+</script>
 <style>
   body { overflow: hidden; }
   .board-page { position: fixed; inset: 0; display: flex; flex-direction: column; }
@@ -26,7 +33,7 @@
   .win-overlay .headline { font-family: var(--font-display); font-weight: 800; letter-spacing: 4px; font-size: clamp(28px, 6vw, 64px); color: var(--gold); text-align: center; }
   .audio-banner {
     position: fixed; top: 16px; right: 16px; z-index: 50;
-    background: var(--gold); color: #1a1400; font-family: var(--font-display);
+    background: var(--gold); color: var(--on-gold-text); font-family: var(--font-display);
     font-weight: 700; letter-spacing: 1px; padding: 8px 16px; border-radius: 8px;
     cursor: pointer; font-size: 13px;
   }
