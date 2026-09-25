@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Buzzer Console</title>
+<style>
+  :root {
+    --bg: #0b1220;
+    --panel: #171b24;
+    --p1: #e31c23;
+    --p1-dim: #4a1013;
+    --p2: #1e3fe0;
+    --p2-dim: #101b52;
+    --gold: #f4c430;
+    --text: #f5f6fa;
+    --text-dim: #9aa0ad;
+    --border: #2c3242;
+    --font-display: "Arial Narrow", "Oswald", "Helvetica Neue", Arial, sans-serif;
+    --font-body: "Segoe UI", Arial, sans-serif;
+    --font-mono: "Consolas", "SFMono-Regular", Menlo, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; height: 100%; background: radial-gradient(ellipse at top, #131a2b 0%, var(--bg) 60%);
+    color: var(--text); font-family: var(--font-body);
+  }
+  body { display: flex; flex-direction: column; min-height: 100vh; }
+
+  header {
+    text-align: center; padding: 18px 12px 8px;
+  }
+  header .title {
+    font-family: var(--font-display); font-weight: 800; letter-spacing: 6px;
+    font-size: clamp(24px, 4vw, 38px); color: var(--gold);
+  }
+  header .subtitle { color: var(--text-dim); font-size: 13px; margin-top: 4px; }
+
+  main {
+    flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 18px;
+    padding: 12px 24px; max-width: 1100px; margin: 0 auto; width: 100%;
+  }
+
+  .player-panel {
+    background: var(--panel); border: 2px solid var(--border); border-radius: 16px;
+    padding: 22px; display: flex; flex-direction: column; align-items: center; text-align: center;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+  }
+  .player-panel.p1 { --accent: var(--p1); --accent-dim: var(--p1-dim); }
+  .player-panel.p2 { --accent: var(--p2); --accent-dim: var(--p2-dim); }
+
+  .player-panel .name {
+    font-family: var(--font-display); font-weight: 800; letter-spacing: 2px;
+    font-size: 22px; background: transparent; border: none; color: var(--text);
+    text-align: center; width: 100%; cursor: text; border-bottom: 1px dashed transparent;
+  }
+  .player-panel .name:hover, .player-panel .name:focus { border-bottom-color: var(--text-dim); outline: none; }
+
+  .buzz-light {
+    width: 130px; height: 130px; border-radius: 50%;
+    background: var(--accent-dim); border: 4px solid var(--accent);
+    margin: 18px 0 10px; display: flex; align-items: center; justify-content: center;
+    font-family: var(--font-display); font-weight: 800; font-size: 15px; letter-spacing: 1px;
+    transition: background 0.1s ease, box-shadow 0.1s ease, transform 0.1s ease;
+  }
+  .player-panel.won .buzz-light {
+    background: var(--accent); box-shadow: 0 0 40px 10px var(--accent);
+    transform: scale(1.08);
+  }
+  .player-panel.locked-out .buzz-light { opacity: 0.35; }
+
+  .buzz-status { font-family: var(--font-display); letter-spacing: 1px; font-size: 14px; color: var(--text-dim); min-height: 18px; }
+  .player-panel.won .buzz-status { color: var(--accent); font-weight: 700; }
+
+  .binding-block { width: 100%; margin-top: 18px; text-align: left; font-size: 13px; }
+  .binding-row { display: flex; align-items: center; justify-content: space-between; margin: 6px 0; }
+  .binding-row span { color: var(--text-dim); }
+  .binding-row kbd {
+    background: #0b1220; border: 1px solid #3a4257; border-radius: 4px;
+    padding: 2px 8px; color: var(--text); font-family: var(--font-mono); margin-left: 6px;
+  }
+
+  .btn {
+    font-family: var(--font-display); font-weight: 700; letter-spacing: 1px; text-transform: uppercase;
+    border: none; border-radius: 8px; padding: 7px 14px; font-size: 12px; cursor: pointer;
+    background: #232838; color: var(--text); transition: filter 0.15s ease, transform 0.08s ease;
+  }
+  .btn:hover { filter: brightness(1.2); }
+  .btn:active { transform: scale(0.96); }
+  .btn.rebinding { background: var(--gold); color: #1a1400; }
+
+  .center-console {
+    grid-column: 1 / -1; display: flex; flex-direction: column; align-items: center; gap: 10px;
+    padding: 8px 0 4px;
+  }
+  #statusLine { font-family: var(--font-display); letter-spacing: 2px; font-size: 16px; color: var(--text-dim); min-height: 22px; }
+  #gapLine { font-family: var(--font-mono); font-size: 13px; color: var(--text-dim); min-height: 18px; }
+  #resetBtn {
+    background: var(--gold); color: #1a1400; font-family: var(--font-display); font-weight: 800;
+    letter-spacing: 2px; text-transform: uppercase; border: none; border-radius: 10px;
+    padding: 14px 36px; font-size: 16px; cursor: pointer;
+  }
+  #resetBtn:hover { filter: brightness(1.08); }
+  #resetBtn:active { transform: scale(0.98); }
+
+  footer {
+    text-align: center; padding: 16px 12px 22px; color: var(--text-dim); font-size: 12px;
+  }
+  footer #gamepadStatus { color: var(--text); margin-bottom: 4px; }
+
+  @media (max-width: 640px) {
+    main { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+  <header>
+    <div class="title">BUZZER CONSOLE</div>
+    <div class="subtitle">Fastest-finger buzz-in for two players — game controllers or keyboard</div>
+  </header>
+
+  <main>
+    <section class="player-panel p1" id="panel0">
+      <input class="name" id="name0" value="Player 1" maxlength="20" />
+      <div class="buzz-light" id="light0">—</div>
+      <div class="buzz-status" id="status0">Ready</div>
+      <div class="binding-block">
+        <div class="binding-row">
+          <span>Controller: <kbd id="gpLabel0">Not bound</kbd></span>
+          <button class="btn" id="gpRebind0">Rebind</button>
+        </div>
+        <div class="binding-row">
+          <span>Keyboard: <kbd id="keyLabel0">Q</kbd></span>
+          <button class="btn" id="keyRebind0">Rebind</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="player-panel p2" id="panel1">
+      <input class="name" id="name1" value="Player 2" maxlength="20" />
+      <div class="buzz-light" id="light1">—</div>
+      <div class="buzz-status" id="status1">Ready</div>
+      <div class="binding-block">
+        <div class="binding-row">
+          <span>Controller: <kbd id="gpLabel1">Not bound</kbd></span>
+          <button class="btn" id="gpRebind1">Rebind</button>
+        </div>
+        <div class="binding-row">
+          <span>Keyboard: <kbd id="keyLabel1">P</kbd></span>
+          <button class="btn" id="keyRebind1">Rebind</button>
+        </div>
+      </div>
+    </section>
+
+    <div class="center-console">
+      <div id="statusLine">Ready — first buzz wins</div>
+      <div id="gapLine"></div>
+      <button id="resetBtn">Reset (Space)</button>
+    </div>
+  </main>
+
+  <footer>
+    <div id="gamepadStatus">Checking for controllers…</div>
+    <div>Click Rebind, then press the button/key. Bindings are saved in this browser only. Esc cancels a rebind.</div>
+  </footer>
+
+<script>
+/*
+ * Buzzer Console — standalone fastest-finger-first tool for two players.
+ * No server, no build step: just open this file in a browser.
+ *
+ * Detects USB game controllers via the Gamepad API (polled every frame —
+ * there's no native "button pressed" event) and/or keyboard keys, both
+ * independently rebindable per player and persisted to localStorage.
+ * The first edge-triggered press after a Reset wins; a short grace
+ * window afterwards still records the other player's time so you can
+ * see how close it was.
+ */
+
+const GRACE_WINDOW_MS = 3000;
+const STORAGE_KEY = "buzzerConsoleConfig";
+
+// ---------------------------------------------------------------- sound --
+const Sound = (() => {
+  let ctx = null;
+  function ensureCtx() {
+    if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)();
+    if (ctx.state === "suspended") ctx.resume();
+    return ctx;
+  }
+  function tone(freq, duration, sweepTo) {
+    const c = ensureCtx();
+    const osc = c.createOscillator();
+    const g = c.createGain();
+    osc.type = "sawtooth";
+    osc.frequency.setValueAtTime(freq, c.currentTime);
+    if (sweepTo) osc.frequency.exponentialRampToValueAtTime(sweepTo, c.currentTime + duration);
+    g.gain.setValueAtTime(0.0001, c.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.25, c.currentTime + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.0001, c.currentTime + duration);
+    osc.connect(g).connect(c.destination);
+    osc.start();
+    osc.stop(c.currentTime + duration + 0.02);
+  }
+  return {
+    unlock() { ensureCtx(); },
+    buzz(playerIndex) {
+      playerIndex === 0 ? tone(220, 0.35, 190) : tone(440, 0.35, 480);
+    },
+    reset() { tone(660, 0.1, null); },
+  };
+})();
+
+// ---------------------------------------------------------------- config --
+
+function loadConfig() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
+    if (saved && saved.players && saved.players.length === 2) return saved;
+  } catch {}
+  return {
+    players: [
+      { name: "Player 1", key: "q", gamepad: null },
+      { name: "Player 2", key: "p", gamepad: null },
+    ],
+  };
+}
+function saveConfig() { localStorage.setItem(STORAGE_KEY, JSON.stringify(config)); }
+
+let config = loadConfig();
+
+// ------------------------------------------------------------------ key helpers --
+
+const RESERVED_KEYS = [" ", "escape"]; // space = reset, escape = cancel rebind
+function normalizeKey(key) { return key.toLowerCase(); }
+function displayKey(key) {
+  if (key === " ") return "Space";
+  return key.length === 1 ? key.toUpperCase() : key.charAt(0).toUpperCase() + key.slice(1);
+}
+function gamepadLabel(binding) {
+  return binding ? `Controller ${binding.index + 1}, button ${binding.button}` : "Not bound";
+}
+
+// ------------------------------------------------------------------- state --
+
+let phase = "idle"; // idle | buzzed
+let winner = null;  // 0 | 1 | null
+let buzzTimes = [null, null]; // performance.now() ms, relative to last reset
+let resetAt = performance.now();
+let graceTimer = null;
+
+let rebindingKey = null;     // 0 | 1 | null
+let rebindingGamepad = null; // 0 | 1 | null
+let previousButtonStates = {}; // gamepadIndex -> [bool,...]
+
+// -------------------------------------------------------------- rendering --
+
+function render() {
+  [0, 1].forEach(i => {
+    const panel = document.getElementById(`panel${i}`);
+    const light = document.getElementById(`light${i}`);
+    const status = document.getElementById(`status${i}`);
+    const nameInput = document.getElementById(`name${i}`);
+    const gpLabel = document.getElementById(`gpLabel${i}`);
+    const keyLabel = document.getElementById(`keyLabel${i}`);
+    const gpBtn = document.getElementById(`gpRebind${i}`);
+    const keyBtn = document.getElementById(`keyRebind${i}`);
+
+    if (document.activeElement !== nameInput) nameInput.value = config.players[i].name;
+
+    panel.classList.toggle("won", winner === i);
+    panel.classList.toggle("locked-out", phase === "buzzed" && winner !== i && buzzTimes[i] === null);
+
+    if (winner === i) {
+      light.textContent = "BUZZ!";
+      status.textContent = `Buzzed in at ${buzzTimes[i].toFixed(0)}ms`;
+    } else if (phase === "buzzed" && buzzTimes[i] !== null) {
+      light.textContent = "—";
+      status.textContent = `Buzzed at ${buzzTimes[i].toFixed(0)}ms (too late)`;
+    } else if (phase === "buzzed") {
+      light.textContent = "—";
+      status.textContent = "Locked out";
+    } else {
+      light.textContent = "—";
+      status.textContent = "Ready";
+    }
+
+    gpLabel.textContent = rebindingGamepad === i ? "Press a button…" : gamepadLabel(config.players[i].gamepad);
+    keyLabel.textContent = rebindingKey === i ? "Press a key…" : displayKey(config.players[i].key);
+    gpBtn.textContent = rebindingGamepad === i ? "Cancel (Esc)" : "Rebind";
+    keyBtn.textContent = rebindingKey === i ? "Cancel (Esc)" : "Rebind";
+    gpBtn.classList.toggle("rebinding", rebindingGamepad === i);
+    keyBtn.classList.toggle("rebinding", rebindingKey === i);
+  });
+
+  const statusLine = document.getElementById("statusLine");
+  const gapLine = document.getElementById("gapLine");
+  if (phase === "idle") {
+    statusLine.textContent = "Ready — first buzz wins";
+    gapLine.textContent = "";
+  } else if (winner !== null) {
+    statusLine.textContent = `${config.players[winner].name} buzzed in first!`;
+    if (buzzTimes[0] !== null && buzzTimes[1] !== null) {
+      const gap = Math.abs(buzzTimes[0] - buzzTimes[1]).toFixed(0);
+      gapLine.textContent = `Margin: ${gap}ms`;
+    } else {
+      gapLine.textContent = "";
+    }
+  }
+}
+
+// ---------------------------------------------------------------- actions --
+
+function registerBuzz(playerIndex) {
+  const t = performance.now() - resetAt;
+  if (phase === "idle") {
+    phase = "buzzed";
+    winner = playerIndex;
+    buzzTimes[playerIndex] = t;
+    Sound.unlock();
+    Sound.buzz(playerIndex);
+    render();
+    graceTimer = setTimeout(render, GRACE_WINDOW_MS); // in case the other player's time never comes in, refresh UI
+  } else if (phase === "buzzed" && buzzTimes[playerIndex] === null && winner !== null && (t - buzzTimes[winner]) < GRACE_WINDOW_MS) {
+    buzzTimes[playerIndex] = t;
+    render();
+  }
+}
+
+function resetRound() {
+  phase = "idle";
+  winner = null;
+  buzzTimes = [null, null];
+  resetAt = performance.now();
+  if (graceTimer) clearTimeout(graceTimer);
+  Sound.unlock();
+  Sound.reset();
+  render();
+}
+
+// ----------------------------------------------------------- name editing --
+
+[0, 1].forEach(i => {
+  const input = document.getElementById(`name${i}`);
+  input.addEventListener("blur", () => {
+    config.players[i].name = input.value.trim() || `Player ${i + 1}`;
+    saveConfig();
+    render();
+  });
+  input.addEventListener("keydown", (e) => { if (e.key === "Enter") input.blur(); });
+});
+
+// -------------------------------------------------------------- keyboard --
+
+document.addEventListener("keydown", (e) => {
+  const typingName = document.activeElement && document.activeElement.classList && document.activeElement.classList.contains("name");
+  if (typingName) return;
+
+  if (e.key === "Escape" && (rebindingKey !== null || rebindingGamepad !== null)) {
+    rebindingKey = null; rebindingGamepad = null; render();
+    return;
+  }
+
+  if (rebindingKey !== null) {
+    e.preventDefault();
+    if (["Shift", "Control", "Alt", "Meta"].includes(e.key)) return;
+    const key = normalizeKey(e.key);
+    const otherIndex = rebindingKey === 0 ? 1 : 0;
+    if (RESERVED_KEYS.includes(key)) { flashHint(`"${displayKey(key)}" is reserved (reset/cancel) — try another.`); return; }
+    if (key === config.players[otherIndex].key) { flashHint(`"${displayKey(key)}" is already the other player's key.`); return; }
+    config.players[rebindingKey].key = key;
+    saveConfig();
+    rebindingKey = null;
+    render();
+    return;
+  }
+
+  if (e.code === "Space") { e.preventDefault(); resetRound(); return; }
+
+  const key = normalizeKey(e.key);
+  [0, 1].forEach(i => { if (config.players[i].key === key) registerBuzz(i); });
+});
+
+document.getElementById("keyRebind0").addEventListener("click", () => { rebindingKey = rebindingKey === 0 ? null : 0; rebindingGamepad = null; render(); });
+document.getElementById("keyRebind1").addEventListener("click", () => { rebindingKey = rebindingKey === 1 ? null : 1; rebindingGamepad = null; render(); });
+
+function flashHint(msg) {
+  const el = document.getElementById("statusLine");
+  el.textContent = msg;
+  setTimeout(() => { if (el.textContent === msg) render(); }, 1600);
+}
+
+// --------------------------------------------------------------- gamepad --
+
+function pollGamepads() {
+  const pads = navigator.getGamepads ? navigator.getGamepads() : [];
+  let connected = 0;
+  for (let gi = 0; gi < pads.length; gi++) {
+    const pad = pads[gi];
+    if (!pad) continue;
+    connected++;
+    const prev = previousButtonStates[gi] || [];
+    pad.buttons.forEach((btn, bi) => {
+      const isPressed = btn.pressed || btn.value > 0.5;
+      if (isPressed && !prev[bi]) onGamepadPress(gi, bi);
+    });
+    previousButtonStates[gi] = pad.buttons.map(b => b.pressed || b.value > 0.5);
+  }
+  const statusEl = document.getElementById("gamepadStatus");
+  statusEl.textContent = connected === 0
+    ? "No controllers detected yet — press any button on each one to activate it."
+    : `${connected} controller${connected > 1 ? "s" : ""} connected.`;
+  requestAnimationFrame(pollGamepads);
+}
+requestAnimationFrame(pollGamepads);
+
+function onGamepadPress(gpIndex, buttonIndex) {
+  if (rebindingGamepad !== null) {
+    const otherIndex = rebindingGamepad === 0 ? 1 : 0;
+    const other = config.players[otherIndex].gamepad;
+    if (other && other.index === gpIndex && other.button === buttonIndex) {
+      flashHint("That button is already the other player's — try another.");
+      return;
+    }
+    config.players[rebindingGamepad].gamepad = { index: gpIndex, button: buttonIndex };
+    saveConfig();
+    rebindingGamepad = null;
+    render();
+    return;
+  }
+
+  [0, 1].forEach(i => {
+    const b = config.players[i].gamepad;
+    if (b && b.index === gpIndex && b.button === buttonIndex) registerBuzz(i);
+  });
+}
+
+document.getElementById("gpRebind0").addEventListener("click", () => { rebindingGamepad = rebindingGamepad === 0 ? null : 0; rebindingKey = null; render(); });
+document.getElementById("gpRebind1").addEventListener("click", () => { rebindingGamepad = rebindingGamepad === 1 ? null : 1; rebindingKey = null; render(); });
+
+// ------------------------------------------------------------------- misc --
+
+document.getElementById("resetBtn").addEventListener("click", resetRound);
+document.body.addEventListener("click", () => Sound.unlock(), { once: true });
+
+render();
+</script>
+</body>
+</html>
